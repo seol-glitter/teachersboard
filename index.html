@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>대시보드 · 불의 마법을 푸는 안전 열쇠</title>
+<style>
+:root{--bg-top:#cfe9fb;--bg-bottom:#fff;--ink:#0b2a4a;--accent:#0f2f57;--pill:#0d2744;--card:#f6fbff;--line:#d7e7f5}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+     background:linear-gradient(180deg,var(--bg-top),var(--bg-bottom))}
+.wrap{max-width:1150px;margin:0 auto;padding:18px 12px 40px}
+.banner{display:block;width:100%;max-width:980px;margin:0 auto}
+.topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:10px 0 16px}
+.btn{padding:10px 14px;border:0;border-radius:12px;background:var(--pill);color:#fff;font-weight:800;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 8px 30px rgba(13,39,68,.06);margin-top:10px}
+.note{font-size:12px;opacity:.75}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:8px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+th{background:#f1f8ff;text-align:center;user-select:none;cursor:pointer}
+th:first-child, td:first-child{width:48px;text-align:center}
+th:nth-child(2), td:nth-child(2){min-width:140px}
+td .cell{display:flex;flex-direction:column;align-items:center;gap:6px}
+.thumb{width:90px;height:90px;background:#f5f7fa;border:1px solid #e3eef6;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.thumb img{max-width:100%;max-height:100%;display:block}
+.date{font-size:11px;opacity:.8}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-weight:700;background:#eaf6ef;color:#177a4c}
+.badge.off{background:#f8ecec;color:#9f1c1c}
+.filterHint{margin-left:8px;font-size:12px;opacity:.7}
+.rowName{color:#0f2f57;text-decoration:underline;cursor:pointer}
+.hidden{display:none}
+</style>
+<body>
+  <div class="wrap">
+    <img class="banner" src="https://seol-glitter.github.io/teacherhome/banner.png" alt="">
+    <div class="topbar">
+      <button id="openRoster" class="btn">유아 명단 입력</button>
+      <div id="klass" class="note"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:6px 0 10px">진행 현황 <span id="filterState" class="filterHint"></span></h3>
+      <div class="note" id="updated"></div>
+      <div style="overflow-x:auto;margin-top:8px">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th data-col="idx">No</th>
+              <th data-col="child">유아명</th>
+              <th data-col="02_위험찾기">2) 위험찾기</th>
+              <th data-col="03_화재대피안전수칙">3) 대피수칙</th>
+              <th data-col="04_비상구로대피">4) 비상구</th>
+              <th data-col="05_옷에불이붙었어요">5) 옷에 불</th>
+              <th data-col="06_119신고하기">6) 119</th>
+              <th data-col="07_소화기사용법">7) 소화기</th>
+              <th data-col="08_완강기사용법">8) 완강기</th>
+              <th data-col="sum">합계</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note" style="margin-top:10px">
+        개인정보 안내: 본 사이트에 저장된 개인정보는 <b>매 학년도 종료 후 담임이 직접 파기</b>해야 하며, <b>탈퇴 시 자동 삭제</b>됩니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달: 유아 명단 입력 -->
+  <div id="modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:14px">
+    <div style="background:#fff;border-radius:16px;max-width:520px;width:100%;padding:14px">
+      <h3 style="margin-top:4px">유아 명단 입력</h3>
+      <div class="note">한 줄에 한 명(엔터 구분) 또는 쉼표(,)로 구분 가능합니다.</div>
+      <form id="rosterForm" method="post" target="hidden_iframe"
+            action="https://script.google.com/macros/s/AKfycbyAbSq8dFnO4PHnX71ni4LVG0zDZcYSBGl2AvrbMdFmBj9iLX-Q4Gl7I9t_wM1oVEGOiA/exec">
+        <input type="hidden" name="action" value="saveRoster">
+        <input type="hidden" name="schoolId" id="f_school">
+        <input type="hidden" name="classId"  id="f_class">
+        <input type="hidden" name="key"      id="f_key">
+        <textarea name="roster" id="f_roster" style="margin-top:8px;min-height:160px" placeholder="예)
+민준
+서윤
+지호
+하린"></textarea>
+        <div class="row" style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <button class="btn" type="submit">저장</button>
+          <button class="btn" type="button" id="closeModal" style="background:#6b7b8c">닫기</button>
+          <div id="saveMsg" class="note"></div>
+        </div>
+      </form>
+      <iframe name="hidden_iframe" class="hidden"></iframe>
+    </div>
+  </div>
+
+<script>
+// 새 EXEC URL
+const EXEC="https://script.google.com/macros/s/AKfycbyAbSq8dFnO4PHnX71ni4LVG0zDZcYSBGl2AvrbMdFmBj9iLX-Q4Gl7I9t_wM1oVEGOiA/exec";
+const CAP ="https://seol-glitter.github.io/teachercapture/";
+const PROBLEMS=["02_위험찾기","03_화재대피안전수칙","04_비상구로대피","05_옷에불이붙었어요","06_119신고하기","07_소화기사용법","08_완강기사용법"];
+
+function jsonp(url,timeoutMs=10000){
+  return new Promise((resolve,reject)=>{
+    const cb='cb_'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+    let done=false,t=null; window[cb]=(d)=>{if(done)return;done=true;cl();resolve(d)};
+    function cl(){try{delete window[cb]}catch(_){ } if(s&&s.parentNode)s.parentNode.removeChild(s); if(t)clearTimeout(t)}
+    const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+    s.onerror=()=>{if(done)return;done=true;cl();reject(new Error('JSONP failed'))};
+    document.body.appendChild(s); t=setTimeout(()=>{if(done)return;done=true;cl();reject(new Error('Timeout'))},timeoutMs);
+  });
+}
+const qp=new URLSearchParams(location.search); const TK=qp.get('tk');
+if(!TK){ document.body.innerHTML='<p style="padding:20px">키가 없습니다. 교사용 홈에서 다시 들어오세요.</p>'; throw new Error('no tk'); }
+
+const $=id=>document.getElementById(id);
+let SCHOOL='', CLASS='', ROSTER=[];  // 로스터는 표의 기본 행 순서로 사용
+let GRID={}; // child -> problem -> {fid, ts}
+
+async function loadData(){
+  // 1) 기본 정보/로스터
+  const info=await jsonp(`${EXEC}?`+new URLSearchParams({action:'resolveKey',key:TK}).toString());
+  if(info.ok){ SCHOOL=info.schoolId||'', CLASS=info.classId||'', ROSTER=info.roster||[]; }
+  $('klass').textContent = `기관: ${SCHOOL||'(미설정)'} · 반: ${CLASS||'(미설정)'}`;
+
+  // 2) 유아별 최신 목록
+  const lb = await jsonp(`${EXEC}?`+new URLSearchParams({action:'listByChild',key:TK}).toString());
+  GRID={};
+  (lb.items||[]).forEach(it=>{
+    const child=(it.child||'').trim();
+    if(!GRID[child]) GRID[child]={};
+    GRID[child][it.problem]={fid:it.fileId, ts:it.ts};
+  });
+
+  renderTable();
+}
+
+function renderTable(){
+  const tb=document.querySelector('#tbl tbody'); tb.innerHTML='';
+  const rows=[];
+  const names = Array.from(ROSTER);
+  const others = Object.keys(GRID).filter(n=> n && !names.includes(n));
+  const hasUnknown = GRID[''] && Object.keys(GRID['']).length>0;
+  names.concat(others).forEach((name,idx)=>rows.push({name, idx:idx+1}));
+  if(hasUnknown) rows.push({name:'(이름 미선택)', idx:rows.length+1, unknown:true});
+
+  rows.forEach(row=>{
+    const tr=document.createElement('tr'); tr.dataset.child=row.name;
+    const tdNo=document.createElement('td'); tdNo.textContent=row.idx; tr.appendChild(tdNo);
+
+    const tdName=document.createElement('td');
+    const a=document.createElement('a'); a.textContent=row.name||''; a.className='rowName';
+    a.onclick=()=>toggleChildFilter(row.name);
+    tdName.appendChild(a); tr.appendChild(tdName);
+
+    let sum=0;
+    PROBLEMS.forEach(p=>{
+      const td=document.createElement('td'); td.dataset.problem=p;
+      const cell=document.createElement('div'); cell.className='cell';
+      const thumb=document.createElement('div'); thumb.className='thumb';
+      const date=document.createElement('div'); date.className='date';
+
+      const rec=(GRID[row.unknown? '': row.name]||{})[p];
+      if(rec){
+        sum++;
+        const img=document.createElement('img'); img.alt=p; img.loading='lazy';
+        thumb.appendChild(img);
+        thumb.title='클릭하여 미리보기 로드'; thumb.style.cursor='pointer';
+        thumb.onclick=async ()=>{
+          if(img.src) return;
+          const j = await jsonp(`${EXEC}?`+new URLSearchParams({action:'thumbB64', key:TK, fileId:rec.fid}).toString());
+          if(j.ok){ img.src=`data:${j.mime};base64,${j.b64}`; thumb.title=''; }
+        };
+        date.textContent=new Date(rec.ts).toLocaleDateString();
+      }else{
+        thumb.innerHTML='<span class="badge off">—</span>'; date.textContent='';
+      }
+      cell.appendChild(thumb); cell.appendChild(date);
+      td.appendChild(cell); tr.appendChild(td);
+    });
+
+    const tdSum=document.createElement('td'); tdSum.innerHTML=`<span class="badge">${sum}</span>`; tr.appendChild(tdSum);
+    tb.appendChild(tr);
+  });
+
+  document.querySelectorAll('#tbl thead th[data-col]').forEach(th=>{
+    th.onclick=()=>{
+      const col=th.dataset.col;
+      if(col==='idx'||col==='child'||col==='sum'){ clearFilters(); return; }
+      toggleProblemFilter(col);
+    };
+  });
+  $('updated').textContent='썸네일은 클릭 시 로드됩니다. 헤더/이름을 눌러 필터할 수 있어요.';
+}
+
+let activeChild='', activeProblem='';
+function clearFilters(){
+  activeChild=''; activeProblem='';
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>tr.classList.remove('hidden'));
+  $('filterState').textContent='';
+}
+function toggleChildFilter(name){
+  if(activeChild===name){ clearFilters(); return; }
+  activeChild=name; activeProblem='';
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+    tr.classList.toggle('hidden', tr.dataset.child!==name);
+  });
+  $('filterState').textContent=`유아 필터: ${name||'(이름 미선택)'}`;
+}
+function toggleProblemFilter(prob){
+  if(activeProblem===prob){ clearFilters(); return; }
+  activeProblem=prob; activeChild='';
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+    const rec=(GRID[tr.dataset.child||'']||{})[prob] || (tr.dataset.child===''? (GRID['']||{})[prob] : null);
+    tr.classList.toggle('hidden', !rec);
+  });
+  $('filterState').textContent=`문항 필터: ${prob}`;
+}
+
+// 모달 열기/닫기/저장
+$('openRoster').onclick=()=>{ 
+  $('modal').classList.remove('hidden'); 
+  $('f_key').value=TK; $('f_school').value=SCHOOL; $('f_class').value=CLASS; 
+  $('f_roster').value=(ROSTER||[]).join('\n'); $('saveMsg').textContent=''; 
+};
+$('closeModal').onclick=()=>{ $('modal').classList.add('hidden'); };
+let submitted=false;
+document.querySelector('#rosterForm').addEventListener('submit',()=>{ submitted=true; $('saveMsg').textContent='저장 중…'; });
+document.querySelector('iframe[name="hidden_iframe"]').addEventListener('load',()=>{
+  if(submitted){ $('saveMsg').textContent='저장 완료'; submitted=false; loadData(); setTimeout(()=>$('modal').classList.add('hidden'), 600); }
+});
+
+loadData();
+</script>
+</body>
+</html>
