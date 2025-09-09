@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>교사용 홈 · 불의 마법을 푸는 안전 열쇠</title>
+<style>
+:root{
+  --bg-top:#cfe9fb; --bg-bottom:#fff; --ink:#0b2a4a;
+  --accent:#0f2f57; --pill:#0d2744; --card:#f6fbff; --line:#d7e7f5;
+  --safe:#22c55e; /* 연두(안전) */
+}
+html,body{height:100%}
+body{
+  margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink);
+  background:linear-gradient(180deg,var(--bg-top),var(--bg-bottom))
+}
+.wrap{max-width:1024px;margin:0 auto;padding:18px 14px 40px}
+.banner{display:block;width:100%;max-width:980px;margin:8px auto 0}
+.sub{margin:10px auto 16px;display:inline-block;padding:10px 18px;border-radius:999px;background:var(--pill);color:#fff;font-weight:800}
+.grid{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+@media (max-width:920px){.grid{grid-template-columns:1fr}}
+.box{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px 16px 18px;box-shadow:0 8px 30px rgba(13,39,68,.06)}
+h3{margin:2px 0 10px;font-size:20px}
+label{display:block;font-size:14px;margin:10px 0 6px;font-weight:700}
+input,button{width:100%;box-sizing:border-box;border-radius:14px;border:1px solid var(--line);padding:12px 14px;font-size:16px;background:#fff;outline:none}
+button{background:var(--accent);color:#fff;font-weight:800;border:none;cursor:pointer;box-shadow:0 6px 14px rgba(15,47,87,.18)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{font-size:12px;opacity:.75}
+
+/* 수업하기 큰 버튼(연두) */
+.btn-safe{
+  width:100%; background:var(--safe); color:#093b18; font-weight:900; border:none;
+  padding:16px 18px; border-radius:16px; font-size:18px; box-shadow:0 8px 18px rgba(34,197,94,.3);
+}
+.btn-safe:hover{filter:brightness(1.05)}
+</style>
+<body>
+  <div class="wrap">
+    <img class="banner" src="https://seol-glitter.github.io/teacherhome/banner.png" alt="불의 마법을 푸는 안전 열쇠 배너">
+    <div class="sub">교사용 홈화면</div>
+
+    <div class="grid">
+      <!-- 좌측: 기관/반 설정 -->
+      <section class="box">
+        <h3>기관/반 설정</h3>
+        <label>기관명</label>
+        <input id="schoolId" placeholder="예: 대한유치원">
+        <label>반 이름</label>
+        <input id="classId" placeholder="예: 무지개반">
+        <label>교사용 비밀번호</label>
+        <input id="tcode" type="password" placeholder="예: RAINBOW-2025">
+        <div class="row" style="margin-top:12px">
+          <button id="goDash">나의 학급 들어가기</button>
+          <button id="makeSession" style="background:#274766">학급 생성</button>
+        </div>
+        <div id="msg" class="note" style="margin-top:6px"></div>
+      </section>
+
+      <!-- 우측: 수업하기 + 안내(사용자용) -->
+      <section class="box">
+        <h3>수업하기</h3>
+        <button id="goClassSite" class="btn-safe">수업하기 (가입 없이 바로 사용)</button>
+        <div style="height:10px"></div>
+        <h3>안내</h3>
+        <div class="note" style="line-height:1.6">
+          • <b>‘수업하기’</b>에 들어가면 어플 내 모든 내용을 <b>가입 없이</b> 바로 대집단 수업에 활용할 수 있습니다.<br>
+          • <b>‘학급 생성’</b>을 통해 <b>학급 유아의 성취 상황</b>을 기록할 수 있습니다.<br>
+          • <b>‘나의 학급 들어가기’</b>에서 <b>학급 유아의 성취 상황</b>을 확인할 수 있습니다.<br>
+          • 같은 <b>기관명·반 이름</b>이라도 <b>비밀번호가 다르면</b> 서로 <b>독립된 학급</b>으로 인식되어 데이터가 분리됩니다.<br>
+          • <b>수집된 자료는 가입일로부터 18개월 후 자동삭제</b>됩니다.
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+// Apps Script EXEC URL (새 배포)
+const EXEC="https://script.google.com/macros/s/AKfycbyAbSq8dFnO4PHnX71ni4LVG0zDZcYSBGl2AvrbMdFmBj9iLX-Q4Gl7I9t_wM1oVEGOiA/exec";
+const DASH="https://seol-glitter.github.io/teachersboard/";
+// 구글 사이트(수업하기)
+const SITES_URL="https://sites.google.com/view/mazerunning/%ED%99%88";
+
+function jsonp(url, timeoutMs=10000){
+  return new Promise((resolve,reject)=>{
+    const cb='cb_'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+    let done=false,t=null; window[cb]=(d)=>{if(done)return;done=true;cl();resolve(d)};
+    function cl(){try{delete window[cb]}catch(_){ } if(s&&s.parentNode)s.parentNode.removeChild(s); if(t)clearTimeout(t)}
+    const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+    s.onerror=()=>{if(done)return;done=true;cl();reject(new Error('JSONP failed'))};
+    document.body.appendChild(s); t=setTimeout(()=>{if(done)return;done=true;cl();reject(new Error('Timeout'))},timeoutMs);
+  });
+}
+const $ = id => document.getElementById(id);
+
+$('goClassSite').onclick=()=>{ window.open(SITES_URL,'_blank'); };
+
+async function gotoDashboard(withSession){
+  const school=$('schoolId').value.trim(); const klass=$('classId').value.trim(); const code=$('tcode').value.trim();
+  if(!school||!klass||!code){$('msg').textContent='기관/반/비밀번호를 입력하세요.'; return;}
+  $('msg').textContent='확인 중…';
+  try{
+    const j = await jsonp(`${EXEC}?`+new URLSearchParams({action:'key',schoolId:school,classId:klass,code:code}).toString());
+    if(!j.ok||!j.teacherKey){$('msg').textContent='로그인 실패';return;}
+    if(withSession){
+      await jsonp(`${EXEC}?`+new URLSearchParams({action:'createSession',schoolId:school,classId:klass,code:code,child:klass}).toString());
+    }
+    localStorage.setItem('schoolId',school); localStorage.setItem('classId',klass);
+    $('msg').textContent='대시보드로 이동합니다…';
+    location.href = `${DASH}?tk=${encodeURIComponent(j.teacherKey)}&v=${Date.now().toString(36)}`;
+  }catch(e){ $('msg').textContent='네트워크 오류: '+e.message; }
+}
+$('goDash').onclick = ()=>gotoDashboard(false); // 나의 학급 들어가기
+$('makeSession').onclick = ()=>gotoDashboard(true); // 학급 생성
+
+// 최근 값 유지
+window.addEventListener('DOMContentLoaded',()=>{
+  const s=localStorage.getItem('schoolId'); const c=localStorage.getItem('classId');
+  if(s) $('schoolId').value=s; if(c) $('classId').value=c;
+});
+</script>
+</body>
+</html>
