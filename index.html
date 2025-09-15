@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>대시보드 · 불의 마법을 푸는 안전 열쇠</title>
+<style>
+:root{--bg-top:#cfe9fb;--bg-bottom:#fff;--ink:#0b2a4a;--pill:#0d2744;--card:#f6fbff;--line:#d7e7f5}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:linear-gradient(180deg,var(--bg-top),var(--bg-bottom))}
+.wrap{max-width:1150px;margin:0 auto;padding:18px 12px 40px}
+.banner{display:block;width:100%;max-width:980px;margin:0 auto}
+.btn{padding:10px 14px;border:0;border-radius:12px;background:var(--pill);color:#fff;font-weight:800;cursor:pointer}
+.btn-secondary{background:#6b7b8c}.btn-danger{background:#a22727}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 8px 30px rgba(13,39,68,.06);margin-top:10px}
+.note{font-size:12px;opacity:.85}.hint{font-size:12px;margin:6px 0 10px;color:#0f2f57}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:8px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top} th{background:#f1f8ff;text-align:center;user-select:none;cursor:pointer}
+th:first-child,td:first-child{width:48px;text-align:center} th:nth-child(2),td:nth-child(2){min-width:140px}
+td .cell{display:flex;flex-direction:column;align-items:center;gap:6px}
+.thumb{width:90px;height:90px;background:#f5f7fa;border:1px solid #e3eef6;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.thumb img{max-width:100%;max-height:100%}
+.thumb .edit{position:absolute;right:6px;top:6px;font-size:11px;line-height:1;padding:4px 6px;border-radius:10px;background:#000a;color:#fff;border:1px solid #fff8;cursor:pointer}
+.date{font-size:11px;opacity:.8}.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-weight:700;background:#eaf6ef;color:#177a4c}.badge.off{background:#f8ecec;color:#9f1c1c}
+details.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px} details.panel summary{font-weight:800;cursor:pointer}
+textarea#rosterBox{width:100%;min-height:140px;margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.small{font-size:12px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9999}
+.modal{width:min(92vw,440px);background:#fff;color:#0b2a4a;border:1px solid var(--line);border-radius:16px;padding:16px 16px 14px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h3{margin:0 0 10px}.modal .preview{width:100%;height:260px;background:#f6fbff;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.modal .preview img{max-width:100%;max-height:100%}
+select{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid var(--line);padding:10px 12px;font-size:15px;background:#fff;outline:none}
+.filterHint{margin-left:8px;font-size:12px;opacity:.7}.rowName{color:#0f2f57;text-decoration:underline;cursor:pointer}
+</style>
+<body>
+<div class="wrap">
+  <img class="banner" src="https://seol-glitter.github.io/teacherhome/banner.png" alt="">
+  <div class="note" id="klass" style="margin:8px 0 4px"></div>
+
+  <details class="panel" id="panelRoster" open>
+    <summary>유아 명단 입력/수정 (선택 사항)</summary>
+    <div class="note">명단은 <b>선택 사항</b>입니다. 한 줄에 한 명(엔터) 또는 쉼표(,)로 구분. (명단 없이도 사용 가능)</div>
+    <textarea id="rosterBox" placeholder="예)
+민준
+서윤
+지호
+하린"></textarea>
+    <div class="row">
+      <button class="btn" id="saveBtn" type="button">저장</button>
+      <button class="btn btn-secondary" id="closeBtn" type="button">접기</button>
+      <div id="saveMsg" class="note" aria-live="polite"></div>
+    </div>
+  </details>
+
+  <p class="hint">※ 유아/문제 제목을 클릭하면 필터됩니다. 썸네일은 클릭 시 로드됩니다. 각 칸의 ‘재분류’로 수정 가능.</p>
+
+  <div class="card">
+    <h3 style="margin:6px 0 10px">진행 현황 <span id="filterState" class="filterHint"></span></h3>
+    <div class="note" id="updated"></div>
+    <div style="overflow-x:auto;margin-top:8px">
+      <table id="tbl">
+        <thead>
+          <tr id="headRow">
+            <th data-col="idx">No</th>
+            <th data-col="child">유아명</th>
+            <th data-col="02_위험찾기">2) 위험찾기</th>
+            <th data-col="03_화재대피안전수칙">3) 대피수칙</th>
+            <th data-col="04_비상구로대피">4) 비상구</th>
+            <th data-col="05_옷에불이붙었어요">5) 옷에 불</th>
+            <th data-col="06_119신고하기">6) 119</th>
+            <th data-col="07_소화기사용법">7) 소화기</th>
+            <th data-col="08_완강기사용법">8) 완강기</th>
+            <th data-col="sum">합계</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="unassignedBox">
+    <h3 style="margin:6px 0 10px">미분류 사진 <small id="uaCount" class="note"></small></h3>
+    <div class="note">이름을 선택해 배정하세요. (대부분은 자동 분류/지속 사용 시 거의 발생 X)</div>
+    <div id="uaList" class="grid" style="margin-top:10px"></div>
+    <div class="row"><button class="btn" id="uaReload" type="button">미분류 새로고침</button></div>
+  </div>
+</div>
+
+<!-- 재분류 모달 -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>사진 재분류</h3>
+    <div class="note" id="editMeta"></div>
+    <div class="preview" style="margin:8px 0 8px"><img id="editImg" alt="미리보기"></div>
+    <label class="note">이름 선택(‘미분류’로 보내려면 비워두세요)</label>
+    <select id="editSelect"></select>
+    <div class="row">
+      <button class="btn" id="editSave">저장</button>
+      <button class="btn btn-secondary" id="editUnassign">미분류로</button>
+      <button class="btn btn-danger" id="editDelete">삭제</button>
+      <button class="btn btn-secondary" id="editClose">닫기</button>
+    </div>
+    <div class="note" id="editMsg" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<script>
+// === 기기 초기화 쿼리 (?reset=1) ===
+const _q=new URLSearchParams(location.search);
+if(_q.get('reset')==='1'){
+  ['tk','mode','schoolId','classId','faceDB'].forEach(k=>localStorage.removeItem(k));
+  location.href = location.origin + location.pathname;
+}
+
+// ★ Apps Script EXEC
+const EXEC_B="https://script.google.com/macros/s/AKfycbzNUWjOhh3V-Cu2WYkl6voDKoAHFKjOl_OQbKH6rQYj6o8K06YoQmc0D7Q6WMJJ-Foz/exec";
+const EXEC_A="https://script.google.com/macros/s/AKfycby4camh7UDnlV4ElL3eJPUUWvslSAtfyssAQBRfizcY9D1MRJK9r_O0ZYDnQvKryalG/exec";
+
+const qs=new URLSearchParams(location.search);
+const tk=(qs.get('tk')||localStorage.getItem('tk')||'').trim();
+const MODE=((qs.get('mode')||localStorage.getItem('mode')||'b').trim().toLowerCase()==='a')?'a':'b';
+const EXEC=MODE==='a'?EXEC_A:EXEC_B;
+if(!tk){ document.body.innerHTML='<p style="padding:20px">키가 없습니다. 교사용 홈에서 먼저 로그인해 주세요. (또는 ?reset=1 로 초기화)</p>'; throw new Error('no tk'); }
+
+function jsonp(url,timeoutMs=12000){
+  return new Promise((resolve,reject)=>{
+    const cb='cb_'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+    window[cb]=(d)=>{cleanup();resolve(d)};
+    function cleanup(){try{delete window[cb]}catch(_){ } if(s&&s.parentNode)s.parentNode.removeChild(s); if(t)clearTimeout(t);}
+    const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&_v='+Date.now();
+    s.onerror=()=>{cleanup();reject(new Error('JSONP failed'))};
+    document.body.appendChild(s); const t=setTimeout(()=>{cleanup();reject(new Error('Timeout'))},timeoutMs);
+  });
+}
+const $=id=>document.getElementById(id);
+
+let SCHOOL='',CLASS='',ROSTER=[],GRID={};
+const PROBLEMS=["02_위험찾기","03_화재대피안전수칙","04_비상구로대피","05_옷에불이붙었어요","06_119신고하기","07_소화기사용법","08_완강기사용법"];
+let activeChild='',activeProblem='';
+
+function applyFilters(){
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+    const child=tr.dataset.child||''; let hide=false;
+    if(activeChild && child!==activeChild) hide=true;
+    if(activeProblem){ const rec=(GRID[child]||{})[activeProblem]; if(!rec) hide=true; }
+    tr.style.display=hide?'none':'';
+  });
+  const fl=[]; if(activeChild) fl.push('유아:'+activeChild); if(activeProblem) fl.push('문제:'+activeProblem);
+  $('filterState').textContent=fl.length?('필터 → '+fl.join(', ')):'';
+}
+function clearFilters(){activeChild='';activeProblem='';applyFilters();}
+
+async function loadData(){
+  const info=await jsonp(`${EXEC}?action=resolveKey&key=${encodeURIComponent(tk)}`);
+  if(!info||!info.ok){$('klass').textContent='서버 오류';return;}
+  SCHOOL=info.schoolId||''; CLASS=info.classId||''; ROSTER=Array.isArray(info.roster)?info.roster:[];
+  $('klass').textContent=`기관: ${SCHOOL||'(미설정)'} · 반: ${CLASS||'(미설정)'} · 모드: ${MODE.toUpperCase()}`;
+  const lb=await jsonp(`${EXEC}?action=listByChild&key=${encodeURIComponent(tk)}`);
+  GRID={}; (lb.items||[]).forEach(it=>{const child=(it.child||'').trim(); if(!GRID[child]) GRID[child]={}; GRID[child][it.problem]={fid:it.fileId,ts:it.ts,mime:it.mime||''};});
+  renderTable(); applyFilters();
+}
+function renderTable(){
+  const tb=document.querySelector('#tbl tbody'); tb.innerHTML='';
+  const names=Array.from(ROSTER);
+  const others=Object.keys(GRID).filter(n=>n && !names.includes(n));
+  const rows=names.concat(others).map((name,i)=>({name,idx:i+1}));
+  const hasUnknown=GRID[''] && Object.keys(GRID['']).length>0; if(hasUnknown) rows.push({name:'(이름 미선택)',idx:rows.length+1});
+  rows.forEach(row=>{
+    const tr=document.createElement('tr'); tr.dataset.child=row.name||'';
+    const tdNo=document.createElement('td'); tdNo.textContent=row.idx; tr.appendChild(tdNo);
+    const tdName=document.createElement('td'); const a=document.createElement('a'); a.textContent=row.name||''; a.href='javascript:'; a.className='rowName';
+    a.onclick=()=>{activeChild=(activeChild===row.name)?'':row.name;applyFilters();}; tdName.appendChild(a); tr.appendChild(tdName);
+    let sum=0;
+    PROBLEMS.forEach(p=>{
+      const td=document.createElement('td'); td.dataset.problem=p; const cell=document.createElement('div'); cell.className='cell';
+      const thumb=document.createElement('div'); thumb.className='thumb'; const date=document.createElement('div'); date.className='date';
+      const rec=(GRID[row.name]||{})[p];
+      if(rec){
+        sum++;
+        const img=document.createElement('img'); img.alt=p; img.loading='lazy'; thumb.appendChild(img);
+        thumb.title='클릭하여 미리보기'; thumb.style.cursor='pointer';
+        thumb.onclick=async ()=>{ if(!img.src){ const j=await jsonp(`${EXEC}?action=thumbB64&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(rec.fid)}`); if(j.ok){img.src=`data:${j.mime||rec.mime||'image/jpeg'};base64,${j.b64}`; thumb.title='';}}};
+        const ed=document.createElement('button'); ed.className='edit'; ed.textContent='재분류';
+        ed.onclick=(e)=>{e.stopPropagation(); openEdit({fid:rec.fid,mime:rec.mime,child:row.name,problem:p,ts:rec.ts});}; thumb.appendChild(ed);
+        date.textContent=new Date(rec.ts).toLocaleDateString();
+      }else{ thumb.innerHTML='<span class="badge off">—</span>'; date.textContent=''; }
+      cell.appendChild(thumb); cell.appendChild(date); td.appendChild(cell); tr.appendChild(td);
+    });
+    const tdSum=document.createElement('td'); tdSum.innerHTML=`<span class="badge">${sum}</span>`; tr.appendChild(tdSum);
+    tb.appendChild(tr);
+  });
+  document.querySelectorAll('#headRow th').forEach(th=>{const col=th.dataset.col||''; if(!col||col==='idx'||col==='child'||col==='sum')return; th.onclick=()=>{activeProblem=(activeProblem===col)?'':col;applyFilters();};});
+  $('updated').textContent='썸네일은 클릭하면 로드됩니다.';
+}
+$('closeBtn').onclick=()=>{$('panelRoster').open=false;};
+$('saveBtn').onclick=async ()=>{
+  $('saveBtn').disabled=true; $('saveMsg').textContent='저장 중…';
+  try{
+    const txt=$('rosterBox').value||'';
+    const j=await jsonp(`${EXEC}?action=saveRoster&key=${encodeURIComponent(tk)}&schoolId=${encodeURIComponent(SCHOOL)}&classId=${encodeURIComponent(CLASS)}&roster=${encodeURIComponent(txt)}`);
+    if(!j||!j.ok||!Array.isArray(j.roster)){ $('saveMsg').innerHTML='<span class="err">서버 업데이트 필요</span>'; return; }
+    ROSTER=j.roster.slice(); $('rosterBox').value=ROSTER.join('\n');
+    await loadData(); $('saveMsg').innerHTML='<span class="ok">저장 완료!</span>'; setTimeout(()=>{$('panelRoster').open=false; $('saveMsg').textContent='';},600);
+  }catch(e){ $('saveMsg').innerHTML='<span class="err">오류: '+e.message+'</span>'; } finally{$('saveBtn').disabled=false;}
+};
+
+// 미분류
+async function loadUnassigned(){
+  const j=await jsonp(`${EXEC}?action=listUnassigned&key=${encodeURIComponent(tk)}`);
+  const box=$('uaList'); box.innerHTML=''; const items=j.items||[]; $('uaCount').textContent=`(${items.length}건)`;
+  items.forEach(it=>{
+    const card=document.createElement('div'); card.className='card'; card.style.padding='8px';
+    const img=document.createElement('img'); img.style.width='100%'; img.style.height='120px'; img.style.objectFit='cover';
+    img.onclick=async ()=>{ if(img.dataset.loaded)return; const t=await jsonp(`${EXEC}?action=thumbB64&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(it.fileId)}`); if(t.ok){img.src=`data:${t.mime||it.mime||'image/jpeg'};base64,${t.b64}`; img.dataset.loaded='1';}};
+    img.alt=it.problem; img.title='클릭하여 미리보기'; card.appendChild(img);
+    const sel=document.createElement('select'); sel.style.width='100%'; sel.style.marginTop='6px';
+    const opt0=document.createElement('option'); opt0.value=''; opt0.textContent='이름 선택'; sel.appendChild(opt0); (ROSTER||[]).forEach(n=>{const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);}); card.appendChild(sel);
+    const btn=document.createElement('button'); btn.className='btn'; btn.textContent='배정'; btn.style.marginTop='6px';
+    btn.onclick=async ()=>{ if(!sel.value){alert('이름을 선택하세요');return;} const r=await jsonp(`${EXEC}?action=assignChild&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(it.fileId)}&child=${encodeURIComponent(sel.value)}`); if(r.ok){btn.textContent='완료'; btn.disabled=true; await loadData(); await loadUnassigned();} else{alert('배정 실패');}};
+    card.appendChild(btn);
+    const dbtn=document.createElement('button'); dbtn.className='btn btn-secondary'; dbtn.style.margin-left='6px'; dbtn.textContent='삭제';
+    dbtn.onclick=async ()=>{ if(!confirm('이 항목을 삭제할까요?'))return; const r=await jsonp(`${EXEC}?action=deleteRecord&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(it.fileId)}`); if(r.ok){await loadData(); await loadUnassigned();} else{alert('삭제 실패');}};
+    card.appendChild(dbtn);
+    const meta=document.createElement('div'); meta.className='note small'; meta.style.marginTop='6px'; meta.textContent=`문제: ${it.problem} · ${new Date(it.ts).toLocaleString()}`; card.appendChild(meta);
+    $('uaList').appendChild(card);
+  });
+}
+$('uaReload').onclick=loadUnassigned;
+
+// 재분류 모달
+const overlay=$('overlay'), editImg=$('editImg'), editSelect=$('editSelect'), editMsg=$('editMsg'), editMeta=$('editMeta'); let EDIT_CTX=null;
+function fillEditNames(selected){ editSelect.innerHTML=''; const o0=document.createElement('option'); o0.value=''; o0.textContent='(미분류)'; editSelect.appendChild(o0); (ROSTER||[]).forEach(n=>{const o=document.createElement('option'); o.value=n; o.textContent=n; editSelect.appendChild(o);}); editSelect.value=selected||''; }
+async function openEdit(rec){ EDIT_CTX=rec; editMsg.textContent=''; editMeta.textContent=`문제: ${rec.problem} · ${new Date(rec.ts).toLocaleString()}`; fillEditNames(rec.child && rec.child!=='(이름 미선택)'?rec.child:''); editImg.src=''; overlay.style.display='flex'; const j=await jsonp(`${EXEC}?action=thumbB64&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(rec.fid)}`); if(j.ok){editImg.src=`data:${j.mime||rec.mime||'image/jpeg'};base64,${j.b64}`;} else{editMsg.textContent='미리보기를 불러오지 못했습니다.';} }
+$('editClose').onclick=()=>{overlay.style.display='none'; EDIT_CTX=null;};
+$('editSave').onclick=async ()=>{ if(!EDIT_CTX)return; const name=editSelect.value; editMsg.textContent='저장 중…'; const r=await jsonp(`${EXEC}?action=assignChild&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(EDIT_CTX.fid)}&child=${encodeURIComponent(name)}`); if(r.ok){overlay.style.display='none'; await loadData(); await loadUnassigned();} else{editMsg.textContent='실패';}};
+$('editUnassign').onclick=async ()=>{ if(!EDIT_CTX)return; if(!confirm('이 사진을 미분류로 이동할까요?'))return; const r=await jsonp(`${EXEC}?action=assignChild&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(EDIT_CTX.fid)}&child=`); if(r.ok){overlay.style.display='none'; await loadData(); await loadUnassigned();} else{alert('실패');}};
+$('editDelete').onclick=async ()=>{ if(!EDIT_CTX)return; if(!confirm('이 사진을 삭제할까요?'))return; const r=await jsonp(`${EXEC}?action=deleteRecord&key=${encodeURIComponent(tk)}&fileId=${encodeURIComponent(EDIT_CTX.fid)}`); if(r.ok){overlay.style.display='none'; await loadData(); await loadUnassigned();} else{alert('삭제 실패');}};
+window.addEventListener('DOMContentLoaded', async ()=>{
+  const info=await jsonp(`${EXEC}?action=resolveKey&key=${encodeURIComponent(tk)}`);
+  if(info && info.ok && Array.isArray(info.roster)) $('rosterBox').value = info.roster.join('\n');
+  await loadData(); await loadUnassigned();
+});
+</script>
+</body>
+</html>
